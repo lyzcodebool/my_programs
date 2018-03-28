@@ -1,0 +1,566 @@
+今天先来看adlist.c中的数据结构。
+我会结合《redis的设计与实现》对代码进行解读。
+先来看看代码：
+adlist.h:
+
+/* adlist.h - A generic doubly linked list implementation
+ *
+ * Copyright (c) 2006-2012, Salvatore Sanfilippo <antirez at gmail dot com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *   * Neither the name of Redis nor the names of its contributors may be used
+ *     to endorse or promote products derived from this software without
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+
+//上面的一大段注释除了第一次说了这是一个双向链表的实现以外，都是在讲版权问题，毕竟是开源的，核心还是不能动的
+//下面我回根据书中看到的和自己的理解在代码中注释
+#ifndef __ADLIST_H__
+#define __ADLIST_H__
+/* Node, List, and Iterator are the only data structures used currently. */
+/*
+ * 链表节点
+ */
+typedef struct listNode {
+    // 前驱节点
+    struct listNode *prev;
+    // 后继节点
+    struct listNode *next;
+    // 值
+    void *value;
+} listNode;
+
+/*
+ * 链表迭代器
+ */
+typedef struct listIter {
+    // 下一节点
+    listNode *next;
+    // 迭代方向
+    int direction;
+} listIter;
+
+/*
+ * 链表
+ */
+typedef struct list {
+    // 表头指针
+    listNode *head;//后面跟的是我们通常编程的顺序链表（双向无环）
+    // 表尾指针
+    listNode *tail;
+    // 节点数量
+    unsigned long len;
+    // 复制函数
+    void *(*dup)(void *ptr);//用来复制链表节点所保存的值
+    // 释放函数
+    void (*free)(void *ptr);//用来释放节点所保存的值
+    // 比对函数
+    int (*match)(void *ptr, void *key);//用来对比链表原来保存的值和另一个输入值是否相等
+} list;
+//这个链表结构也是redis设计的聪明的地方之一，这个list其实相当于一个容器，它使得我们查找表头、表尾、链表的长度（节点个数）的复杂度从普通链表的O(N)变为O(1).
+
+/* Functions implemented as macros */
+// 返回链表的节点数量
+#define listLength(l) ((l)->len)
+// 返回链表的表头节点
+#define listFirst(l) ((l)->head)
+// 返回链表的表尾节点
+#define listLast(l) ((l)->tail)
+// 返回给定节点的前一个节点
+#define listPrevNode(n) ((n)->prev)
+// 返回给定节点的后一个节点
+#define listNextNode(n) ((n)->next)
+// 返回给定节点的值
+#define listNodeValue(n) ((n)->value)
+
+#define listSetDupMethod(l,m) ((l)->dup = (m))//列表复制方法的设置
+#define listSetFreeMethod(l,m) ((l)->free = (m))//列表释放方法的设置
+#define listSetMatchMethod(l,m) ((l)->match = (m))//列表匹配方法设置
+
+#define listGetDupMethod(l) ((l)->dup)//列表复制方法的获取
+#define listGetFree(l) ((l)->free)//列表的释放方法的获取
+#define listGetMatchMethod(l) ((l)->match)//列表匹配方法的获取
+
+/* Prototypes */
+list *listCreate(void);//创建链表
+void listRelease(list *list);//列表的释放
+list *listAddNodeHead(list *list, void *value);//添加链表头结点
+list *listAddNodeTail(list *list, void *value);//添加链表尾节点
+list *listInsertNode(list *list, listNode *old_node, void *value, int after);//向链表中某位置插入节点
+void listDelNode(list *list, listNode *node);//删除链表中指定的节点
+listIter *listGetIterator(list *list, int direction);//获取链表给定方向上的迭代器
+listNode *listNext(listIter *iter);//获取迭代器内的下一个节点
+void listReleaseIterator(listIter *iter);//释放迭代器链表
+list *listDup(list *orig);//复制链表
+listNode *listSearchKey(list *list, void *key);//查找给定key的节点
+listNode *listIndex(list *list, long index);//下标索引的具体节点
+void listRewind(list *list, listIter *li);//重置迭代器为方向从头开始
+void listRewindTail(list *list, listIter *li);//重置迭代器的方向从尾开始
+void listRotate(list *list);//列表旋转，第一次听说，等在.c中看具体实现
+
+/* Directions for iterators */
+//定义两个迭代方向，0从头开始向尾部，1代表从尾部向头部
+#define AL_START_HEAD 0
+#define AL_START_TAIL 1
+
+#endif /* __ADLIST_H__ */
+
+//来看看.c文件中链表操作函数的具体实现：
+源代码如下：
+/* adlist.c - A generic doubly linked list implementation
+ *
+ * Copyright (c) 2006-2010, Salvatore Sanfilippo <antirez at gmail dot com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above copyright notice,
+ *     this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *   * Neither the name of Redis nor the names of its contributors may be used
+ *     to endorse or promote products derived from this software without
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+//同.h文件一样上来先声明了版权。
+
+#include <stdlib.h>
+#include "adlist.h"
+#include "zmalloc.h"
+
+/*
+ * 创建一个新列表
+ * 创建成功时返回列表，创建失败返回 NULL
+ * T = O(1)
+ */
+list *listCreate(void)
+{
+    struct list *list;
+    // 为列表结构分配内存
+    if ((list = zmalloc(sizeof(*list))) == NULL)
+    //zmalloc是redis自己的内存分配函数，现在我还不知道它的实现方式，等到了这部分要好好看看它和malloc实现
+    //的异同，看到这我决定去吧malloc的底层实现方式复习一遍。
+        return NULL;
+    // 初始化属性
+    list->head = list->tail = NULL;
+    list->len = 0;
+    list->dup = NULL;
+    list->free = NULL;
+    list->match = NULL;
+
+    return list;
+}
+
+/*
+ * 释放整个列表(以及列表包含的节点)
+ *
+ * T = O(N)，N 为列表的长度
+ */
+void listRelease(list *list)
+{
+    unsigned long len;
+    listNode *current, *next;
+
+    current = list->head;
+    len = list->len;
+    while(len--) {
+        next = current->next;
+        // 如果列表有自带的 free 方法，那么先对节点值调用它
+        if (list->free) list->free(current->value);
+        // 之后再释放节点
+        zfree(current);
+        current = next;
+    }
+    //在释放所有节点的时候和删除一个节点不同，删除一个节点我们只需要知道插入
+    //位置前一个节点的位置
+    //删除所有节点next作为一个副本保存当前节点的下一个节点的状态（副本是个人理解起的名字）
+    zfree(list);
+}
+
+/*
+ * 新建一个包含给定 value 的节点，并将它加入到列表的表头
+ * 出错时，返回 NULL ，不执行动作。
+ * 成功时，返回传入的列表
+ * T = O(1)
+ */
+list *listAddNodeHead(list *list, void *value)
+{
+    listNode *node;
+
+    if ((node = zmalloc(sizeof(*node))) == NULL)
+        return NULL;
+
+    node->value = value;
+
+    if (list->len == 0) {
+        // 第一个节点
+        list->head = list->tail = node;
+        node->prev = node->next = NULL;
+    } else {
+        // 不是第一个节点
+        node->prev = NULL;//前驱指针置null
+        node->next = list->head;//后继指针指向当前链表的头结点
+        list->head->prev = node;//修改头结点的前驱为新加入的节点
+        list->head = node;//移动头结点指针指向当前节点，当前节点成为头结点。
+    }
+
+    list->len++;//链表长度更新
+
+    return list;
+}
+
+/*
+ * 新建一个包含给定 value 的节点，并将它加入到列表的表尾
+ * 出错时，返回 NULL ，不执行动作。
+ * 成功时，返回传入的列表
+ * T = O(1)
+ */
+list *listAddNodeTail(list *list, void *value)
+{
+    listNode *node;
+
+    if ((node = zmalloc(sizeof(*node))) == NULL)
+        return NULL;
+
+    node->value = value;
+
+    if (list->len == 0) {
+        // 第一个节点
+        list->head = list->tail = node;
+        node->prev = node->next = NULL;
+    } else {
+        // 不是第一个节点
+        node->prev = list->tail;
+        node->next = NULL;
+        list->tail->next = node;
+        list->tail = node;
+    }
+
+    list->len++;
+
+    return list;
+}
+
+/*
+ * 创建一个包含值 value 的节点
+ * 并根据 after 参数的指示，将新节点插入到 old_node 的之前或者之后
+ * T = O(1)
+ */
+list *listInsertNode(list *list, listNode *old_node, void *value, int after) {
+    listNode *node;
+
+    if ((node = zmalloc(sizeof(*node))) == NULL)
+        return NULL;
+
+    node->value = value;
+
+    if (after) {
+        // 插入到 old_node 之后
+        node->prev = old_node;
+        node->next = old_node->next;
+        // 处理表尾节点
+        if (list->tail == old_node) {
+            list->tail = node;
+        }
+    } else {
+        // 插入到 old_node 之前
+        node->next = old_node;
+        node->prev = old_node->prev;
+        // 处理表头节点
+        if (list->head == old_node) {
+            list->head = node;
+        }
+    }
+
+    // 更新前置节点和后继节点的指针
+    if (node->prev != NULL) {
+        node->prev->next = node;
+    }
+    if (node->next != NULL) {
+        node->next->prev = node;
+    }
+
+    // 更新列表节点数量
+    list->len++;
+
+    return list;
+}
+
+/*
+ * 释放列表中给定的节点
+ * 清除节点私有值(private value)的工作由调用者完成
+ * T = O(1)
+ */
+void listDelNode(list *list, listNode *node)
+{
+    // 处理前驱节点的指针
+    if (node->prev)
+        node->prev->next = node->next;
+    else
+        list->head = node->next;
+
+    // 处理后继节点的指针
+    if (node->next)
+        node->next->prev = node->prev;
+    else
+        list->tail = node->prev;
+
+    // 释放节点值
+    if (list->free) list->free(node->value);
+
+    // 释放节点
+    zfree(node);
+
+    // 更新列表节点数量
+    list->len--;
+}
+
+/*
+* 创建列表 list 的一个迭代器，迭代方向由参数 direction 决定
+* 每次对迭代器调用 listNext() ，迭代器就返回列表的下一个节点
+* 这个函数不处理失败情形
+* T = O(1)
+*/
+listIter *listGetIterator(list *list, int direction)
+{
+    listIter *iter;
+    
+    if ((iter = zmalloc(sizeof(*iter))) == NULL) return NULL;
+
+    // 根据迭代的方向，将迭代器的指针指向表头或者表尾
+    if (direction == AL_START_HEAD)
+        iter->next = list->head;
+    else
+        iter->next = list->tail;
+
+    // 记录方向
+    iter->direction = direction;
+
+    return iter;
+}
+
+/*
+ * 释放迭代器 iter
+ * T = O(1)
+ */
+void listReleaseIterator(listIter *iter) {
+    zfree(iter);
+}
+
+/*
+ * 将迭代器 iter 的迭代指针倒回 list 的表头
+ * T = O(1)
+ */
+void listRewind(list *list, listIter *li) {
+    li->next = list->head;
+    li->direction = AL_START_HEAD;
+}
+
+/*
+ * 将迭代器 iter 的迭代指针倒回 list 的表尾
+ * T = O(1)
+ */
+void listRewindTail(list *list, listIter *li) {
+    li->next = list->tail;
+    li->direction = AL_START_TAIL;
+}
+
+/*
+ * 返回迭代器的当前节点
+ * 函数要么返回当前节点，要么返回 NULL ，因此，常见的用法是：
+ * 
+ * iter = listGetIterator(list,<direction>);
+ * while ((node = listNext(iter)) != NULL) {
+ *     doSomethingWith(listNodeValue(node));
+ * }
+ *
+ * T = O(1)
+ */
+listNode *listNext(listIter *iter)
+{
+    listNode *current = iter->next;
+    //这里自己对迭代器不熟悉所以开始一直纠结为什么是iter->next又看了一遍上面的迭代器
+    //创建函数知道iter->next 指向当前节点
+
+    if (current != NULL) {
+        // 根据迭代方向，选择节点
+        if (iter->direction == AL_START_HEAD)
+            iter->next = current->next;
+        else
+            iter->next = current->prev;
+    }
+
+    return current;
+}
+
+/*
+ * 复制整个列表，成功返回列表的副本，内存不足而失败时返回 NULL 。
+ * 无论复制是成功或失败，输入列表都不会被修改。
+ * T = O(N)，N 为 orig 列表的长度
+ */
+list *listDup(list *orig)
+{
+    list *copy;
+    listIter *iter;
+    listNode *node;
+
+    if ((copy = listCreate()) == NULL)
+        return NULL;
+
+    // 复制属性
+    copy->dup = orig->dup;
+    copy->free = orig->free;
+    copy->match = orig->match;
+
+    // 复制节点
+    iter = listGetIterator(orig, AL_START_HEAD);
+    //这里使用迭代器就很方便而且是O(1)定位下一个节点
+    while((node = listNext(iter)) != NULL) {
+
+        // 复制节点值
+        void *value;
+        
+        if (copy->dup) {
+            value = copy->dup(node->value);
+            if (value == NULL) {
+                //检查是否发生oom（out of memory），如果内存溢出就释放copy和迭代器
+                listRelease(copy);
+                listReleaseIterator(iter);
+                return NULL;
+            }
+        } else
+            value = node->value;
+        
+        // 将新节点添加到新列表末尾
+        if (listAddNodeTail(copy, value) == NULL) {
+            //检查是否发生内存溢出
+            listRelease(copy);
+            listReleaseIterator(iter);
+            return NULL;
+        }
+    }
+    //最后释放迭代器
+    listReleaseIterator(iter);
+    //从这段程序可以看出开发者在编写程序时候的严谨性，对内存操作的严谨也铸就了redis在内存
+    //方面的优势
+    return copy;
+}
+
+/*
+ * 在列表中查找和 key 匹配的节点。
+ *
+ * 如果列表带有匹配器，那么匹配通过匹配器来进行。
+ * 如果列表没有匹配器，那么直接将 key 和节点的值进行比对。
+ *
+ * 匹配从表头开始，第一个匹配成功的节点会被返回
+ * 如果匹配不成功，返回 NULL 。
+ *
+ * T = O(N)，N 为列表的长度
+ */
+listNode *listSearchKey(list *list, void *key)
+{
+    listIter *iter;
+    listNode *node;
+
+    // 使用迭代器查找
+    iter = listGetIterator(list, AL_START_HEAD);
+    while((node = listNext(iter)) != NULL) {
+        if (list->match) {
+            // 使用列表自带的匹配器进行比对
+            if (list->match(node->value, key)) {
+                listReleaseIterator(iter);
+                return node;
+            }
+        } else {
+            // 直接用列表的值来比对
+            if (key == node->value) {
+                listReleaseIterator(iter);
+                return node;
+            }
+        }
+    }
+
+    // 没找到
+    listReleaseIterator(iter);
+    return NULL;
+}
+
+/*
+ * 根据给定索引，返回列表中对应的节点
+ * 索引可以是正数，也可以是负数。
+ * 正数从 0 开始计数，由表头开始；负数从 -1 开始计数，由表尾开始。
+ * 如果给定索引超出列表的返回，返回 NULL 。
+ * T = O(N)，N 为列表的长度
+ */
+listNode *listIndex(list *list, long index) {
+    listNode *n;
+
+    if (index < 0) {
+        index = (-index)-1;
+        n = list->tail;
+        while(index-- && n) n = n->prev;
+    } else {
+        n = list->head;
+        while(index-- && n) n = n->next;
+    }
+    //代码简洁易懂。
+    return n;
+}
+
+/*
+ * 取出列表的尾节点，将它插入到表头，成为新的表头节点
+ * T = O(1)
+ */
+void listRotate(list *list) {
+    listNode *tail = list->tail;
+
+    // 列表只有一个元素
+    if (listLength(list) <= 1) return;
+
+    // 取出尾节点
+    list->tail = tail->prev;
+    list->tail->next = NULL;
+    // 将它插入到表头
+    list->head->prev = tail;
+    tail->prev = NULL;
+    tail->next = list->head;
+    list->head = tail;
+}
+//看了源代码才知道代码可以这么简洁，学到的新东西是迭代器，可以提高访问链表的效率
+//以后自己在写代码的时候也要注意提炼代码使代码简洁，注视易懂，函数或者变量命名格式一致可易懂
+
+
