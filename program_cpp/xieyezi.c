@@ -1,0 +1,91 @@
+#include <stdio.h>
+#include<stdlib.h>
+#include<unistd.h>
+#define LEN 10
+int main(void){
+    char *str = {0};
+
+    str = (char *)malloc(sizeof(char)*LEN);
+    printf("请输入她的名字:");
+    scanf("%s", str);
+    printf("\n\n\n");
+    printf("\033[0;31m                        *********            **********\033[0m\n");
+    sleep(1);
+    printf("                     **************          **************\n");
+    sleep(1);
+    printf("\033[0;31m                    ****************        ****************\033[0m\n");
+    sleep(1);
+    printf("                ************************************************\n");
+    sleep(1);
+    printf("\033[0;31m            *****                                              *****\033[0m\n");
+    sleep(1);
+    printf("           **                                                      **\n");
+    sleep(1);
+    printf("\033[0;31m         ****                                                      ****\033[0m\n");
+    sleep(1);
+    printf("       ****                                                          ****\n");
+    sleep(1);
+    printf("\033[0;31m     ***                                                                ***\033[0m\n");
+    sleep(1);
+    printf("     ***                                                                ***\n");
+    sleep(1);
+    printf("\033[0;31m    ****                                                                ***\033[0m\n");
+    sleep(1);
+    printf("    ****                                                                ****\n");
+    sleep(1);
+    printf("\033[0;31m   *****                                                                *****\033[0m\n");
+    sleep(1);
+    printf("    ****                                                                ****\n");
+    sleep(1);
+    printf("\033[0;31m     ***                                                                ***\033[0m\n");
+    sleep(1);
+    printf("      **                                                                **\n");
+    sleep(1);
+    printf("\033[0;31m       **                                                              **\033[0m\n");
+    sleep(1);
+    printf("        **                                                            **\n");
+    sleep(1);
+    printf("\033[0;31m         **                                                          **\033[0m\n");
+    sleep(1);
+    printf("          **                                                        **\n");
+    sleep(1);
+    printf("\033[0;31m           *****                                                *****\033[0m\n");
+    sleep(1);
+    printf("            *****                                              *****\n");
+    sleep(1);
+    printf("\033[0;31m             *****                                            *****\033[0m\n");
+    sleep(1);
+    printf("              *****                                          *****\n");
+    sleep(1);
+    printf("\033[0;31m               *****                                        *****\033[0m\n");
+    sleep(1);
+    printf("                *****                                      *****\n");
+    sleep(1);
+    printf("\033[0;31m                 *****                                    *****\033[0m\n");
+    sleep(1);
+    printf("                   *****                                *****\n");
+    sleep(1);
+    printf("\033[0;31m                     ****                              ****\033[0m\n");
+    sleep(1);
+    printf("                      ****                            ****\n");
+    sleep(1);
+    printf("\033[0;31m                        ****                        ****\033[0m\n");
+    sleep(1);
+    printf("                         ****                      ****\n");
+    sleep(1);
+    printf("\033[0;31m                           ****                  ****\033[0m\n");
+    sleep(1);
+    printf("                              *****           *****\n");
+    sleep(1);
+    printf("\033[0;31m                               *****************\033[0m\n");
+    sleep(1);
+    printf("                                  *************\n");
+    sleep(1);
+    printf("\033[0;31m                                    *********\033[0m\n");
+    sleep(1);
+    printf("                                      *****\n");
+    sleep(1);
+    printf("\033[0;31m                                       ***\033[0m\n");
+
+    return 0;
+}

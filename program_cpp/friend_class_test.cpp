@@ -18,7 +18,7 @@ private:
 
 int main(void)
 {
-    Point2 a;
+    class Point2 a;
     Point1 point(10, 10);
     Point1 &b = point;
 
