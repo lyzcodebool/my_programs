@@ -78,11 +78,17 @@ void Print(StackList *s)
         while(pnew){
             printf("%d ", pnew->value);
             pnew = pnew->next;
-        }
+    }
         printf("\n");
     }
 }
 int main(void)
 {
+    StackList p;
+    StackInit(&p);
+    PushStackList(&p, 10);
+    Print(&p);
+
+
     return 0;
 }
