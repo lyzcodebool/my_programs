@@ -35,7 +35,9 @@ int main(void)
 
     bool m = d.operator[](5);
     cout << m<< endl;
-
+    
+    bool n = d.test(5);
+    cout <<"n = "<<n<<endl;
     return 0;
 }
 
