@@ -9,6 +9,7 @@ public:
         std::cout << "value is " << value << std::endl;  
     }  
     int value;  
+//    int *p;
 };  
  
 class FromBase : public Base {  
@@ -20,6 +21,7 @@ public:
         std::cout << "value is " << value << std::endl;  
     }  
     int value;  
+   // int a;
 };  
 
 class Test1  
@@ -67,6 +69,8 @@ int main(void)
 {
     Test1 test;
     test.test();
+    cout<<"sizeof(Base)"<<sizeof(Base)<<endl;
+    cout<<"sizeof(FromBase)"<<sizeof(FromBase)<<endl;
 
     return 0;
 }
