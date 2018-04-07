@@ -34,6 +34,7 @@ namespace ClassFoo{
         PrintIntVector(foo);
     }
 }
+
 int main(void)
 {
     ClassFoo::NormalSort3();
