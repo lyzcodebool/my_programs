@@ -1,8 +1,16 @@
 #include <iostream>
 
 class Test{
-    const int test;
+public:
+    Test(int x, int y, int z):a(x),c(z){}
+
+private:
+    const int a;
+    static const int b;
+    int c;
 };
+
+//const int Test::b = 1;
 
 int main(void)
 {

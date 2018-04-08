@@ -2,6 +2,7 @@
 
 int main(void)
 {
+    const int i = 0;
     const int test = 10;
 
     int *p = (int *)&test;
