@@ -1,7 +1,8 @@
 #include <iostream>
 
 using namespace std;
-
+//悬挂指针用valgrind来检测
+//
 class Point{
 public:
 
