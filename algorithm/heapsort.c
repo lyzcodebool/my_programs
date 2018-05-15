@@ -33,6 +33,28 @@ void makeHeap(int *heap, int size)
     }
 }
 
+/* int delete_heap_top(int *heap, int size) */
+/* { */
+/*     if(size == 0){ */
+/*         printf("heap empty\n"); */
+/*         return 1; */
+/*     } */
+    
+/*     swap(&heap[0], &heap[size]); */
+/*     int child = 1; */
+/*     for(int parent = 0; 2*parent+1 < szie; parent = child){ */
+/*         child = parent<<1|1; */
+/*         if(child + 1 < szie){ */
+/*             if(heap[child] > heap[child + 1]) */
+/*                 child ++; */
+/*         } */
+/*         if(head[child] > heap[parent]) */
+/*             break; */
+/*         else */ 
+/*             swap(&heap[child], heap[parent]); */
+/*     } */
+/*     return 0; */
+/* } */
 int main(void)
 {
     int a[] = {2, 4, 3, 1, 5, 7, 9, 11, 10, 90, 12};
@@ -41,6 +63,8 @@ int main(void)
     {
         printf("%d ", a[i]);
     }
+
+    
     putchar(10);
     return 0;
 }

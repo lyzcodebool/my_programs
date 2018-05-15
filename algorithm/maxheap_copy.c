@@ -24,7 +24,36 @@ void buildHeap(int id, int maxid)
     }    
         
 }     
-    
+
+int detele_top(int *heap, int size)
+{
+    if(size == 0)
+    {
+        cout<<"empty"<<endl;
+        return 1;
+    }
+
+    int child = 1;
+    int parent;
+    int len = size - 1;
+    for(parent = 0; (parent<<1|1) < len; parent = child)
+    {
+        child = parent<<1|1;
+        if(child + 1 < len)
+        {
+            if(heap[child] > heap[child+ 1])
+                child ++;
+        }
+
+        if(heap[size] > heap[child])
+            break;
+        else
+            heap[parent] = heap[child];
+    }
+    heap[parent] = heap[len];
+    return 0;
+}
+
 void heapSort()    
 {    
     int len=LEN-1;    
@@ -39,6 +68,10 @@ void heapSort()
 int main()    
 {    
     heapSort();    
+    for(int i=0;i<LEN;i++)    
+        cout<<a[i]<<" ";    
+    cout<<endl;    
+    detele_top(a,LEN );
     for(int i=0;i<LEN;i++)    
         cout<<a[i]<<" ";    
     cout<<endl;    
