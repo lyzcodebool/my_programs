@@ -41,7 +41,18 @@ int strstr_count(const char *src, const char *dst)
     return p? 1+strstr_count(p+1, dst):0;
 }
 
-
+//strncmp
+int strncmp_count(const char *src, const char *dst)
+{
+    int cnt = 0;
+    for(int cmplen = strlen(dst); *src != 0; src++)
+    {
+        if(strncmp(src, dst, cmplen) == 0){
+            cnt++;
+        }
+    }
+    return cnt;
+}
 int main(void)
 {
 
