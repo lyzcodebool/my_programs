@@ -20,9 +20,8 @@ void Point::init(int m, int n) const{
 int main(void){
 
     Point point(1, 2);
-    const Point *const p = &point;
+    const Point * const p = &point;
     p->l = 8;
-    
 
     return 0;
 }

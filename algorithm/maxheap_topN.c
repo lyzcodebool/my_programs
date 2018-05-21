@@ -45,22 +45,23 @@ int detele_heaptop(int *heap, int size)
         return 1;
     }
 
-    int len = size -1;
+    int len = size-1;
     int child = 1;
-    int parent;
+    int parent  = 0;
+
     for(parent = 0; (parent<<1|1) < len; parent = child)
     {
         child = parent<<1|1;
         if(child + 1 < len){
-            if(heap[child] > heap[child + 1])
+            if(heap[child] >  heap[child + 1])
                 child ++;
         }
-        if(heap[len] > heap[child])
+        if(heap[len] < heap[child])
             break;
         else 
-            heap[parent] = heap[child];
+            heap[parent] = heap[len];
     }
-    heap[parent] = heap[len];
+    heap[parent] = heap[child];
     return 0;
 }
 
@@ -84,12 +85,12 @@ int main(void)
     }
 
     putchar(10);
-    /* detele_heaptop(a, 10); */
-    /* for(int i = 0; i < 9; i ++) */
-    /* { */
-    /*     printf("%d ", a[i]); */
-    /* } */
-    /* putchar(10); */
+    detele_heaptop(a, 10);
+    for(int i = 0; i < 9; i ++)
+    {
+        printf("%d ",a[i]);
+    }
+    putchar(10);
 
     topk_bymaxheap(a, 10, 3);
     for(int i = 0; i < 3; i ++)
