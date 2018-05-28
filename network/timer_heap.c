@@ -131,8 +131,7 @@ void Test_CallBack_Func(Timer_Ctl_t *timer_ctl)
 {
     static int timeout = 0;
     printf("hello world\n");
-    timeout += 5;
-    sleep(5);
+    timeout += 1;
     printf("time = %d\n", timeout);
     Ev_Timer_Start(timeout, Test_CallBack_Func, timer_ctl);
 }
@@ -152,17 +151,13 @@ void Timer_Run(Timer_Ctl_t *timer_ctl )
             timer_ctl->timer.cb( timer_ctl);
         Delete_Heap(&timer_ctl->heap);
     }
-    usleep(20000);
+    sleep(1);
 }
 
 int main()
 {
     Timer_Ctl_t timer_ctl;
     Timer_Init(&timer_ctl);
-    Ev_Timer_Start(5, Test_CallBack_Func, &timer_ctl);
-    while(1)
-    {
-        Timer_Run(&timer_ctl);
-    }
+    Ev_Timer_Start(1, Test_CallBack_Func, &timer_ctl);
     return 0;
 }
