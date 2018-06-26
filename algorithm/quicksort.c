@@ -37,7 +37,7 @@ void quicksort(int *a, int low, int high)
 
 int main(void)
 {
-    int a[] = {1, 3, 2, 5, 4};
+    int a[] = {2, 4, 3, 1, 0};
     quicksort(a, 0, 5);
     for(int i = 0; i < 5; ++i){
         printf("%d ", a[i]);
