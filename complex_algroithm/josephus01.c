@@ -52,7 +52,5 @@ void josephus_ret(int total, int from, int count)
 int main(void)
 {
     josephus_ret(13, 0, 3);
-
-
     return 0;
 }
